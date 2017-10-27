@@ -46,7 +46,7 @@ public class DMSTGraph extends Graph
         ArrayList<DMSTVertex> memberVerticesOfComponent;
         boolean disabled;
 
-        public DMSTVertex(XGraph.XVertex u)
+        public DMSTVertex(Graph.Vertex u)
         {
             super(u);
             isComponent=false;
@@ -57,7 +57,7 @@ public class DMSTGraph extends Graph
             disabled=false;
         }
 
-        public DMSTVertex(ArrayList<DMSTVertex> listOfVertices,XGraph.XVertex u)
+        public DMSTVertex(ArrayList<DMSTVertex> listOfVertices,Graph.Vertex u)
         {
             super(u);
             isComponent=true;
@@ -239,8 +239,8 @@ public class DMSTGraph extends Graph
                 min=v.adj.get(0).weight;
             for (Graph.Edge e:v.adj)
             {
-                Graph.Vertex u1 = e.otherEnd(xg.getVertex(v.getName()+1));
-                XGraph.XVertex u = xg.getVertex(u1);
+                Graph.Vertex u = e.otherEnd(xg.getVertex(v.getName()+1));
+                //XGraph.XVertex u = xg.getVertex(u1);
                 DMSTVertex vDMST = DMSTVertices[v.getName()];
                 DMSTVertex uDMST = DMSTVertices[u.getName()];
                 DMSTEdge edge = new DMSTEdge(vDMST,uDMST,e.weight);
@@ -314,8 +314,8 @@ public class DMSTGraph extends Graph
         public static DMSTVertex createDMSTComponent(ArrayList<DMSTVertex> VerticesInCycle)
     {
         Graph.Vertex v = new Graph.Vertex(currentSizeOfGraph);
-        XGraph.XVertex u = new XGraph.XVertex(v);
-        DMSTVertex c = new DMSTVertex(VerticesInCycle,u);
+        //XGraph.XVertex u = new XGraph.XVertex(v);
+        DMSTVertex c = new DMSTVertex(VerticesInCycle,v);
         for (DMSTVertex v1:VerticesInCycle)
         {
             v1.disable();
@@ -375,11 +375,11 @@ public class DMSTGraph extends Graph
         Scanner in = new Scanner(System.in);
         System.out.println("Enter Graph: ");
         Graph g = Graph.readDirectedGraph(in);
-        XGraph xg = new XGraph(g);
-        DMSTGraph dg = new DMSTGraph(xg);
+        //XGraph xg = new XGraph(g);
+        DMSTGraph dg = new DMSTGraph(g);
         dg.printEdges();
 
-        numComps=StronglyConnectedComps.findStronglyConnectedComponents(dg,numComps);
+        //numComps=StronglyConnectedComps.findStronglyConnectedComponents(dg,numComps);
         System.out.println("Number of SCC: "+numComps);
         ArrayList<DMSTVertex> dummyCycle= new ArrayList<>();
         ArrayList<DMSTEdge> dummyEdges = new ArrayList<>();

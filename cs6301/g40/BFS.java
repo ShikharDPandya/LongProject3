@@ -26,12 +26,12 @@ public class BFS extends GraphAlgorithm<BFS.BFSVertex> {
     Graph.Vertex src;
 
 	//public BFS(Graph g, Graph.Vertex src) {
-    public BFS(XGraph xg, Graph.Vertex src) {
-	super(xg);
+    public BFS(Graph g, Graph.Vertex src) {
+	super(g);
 	this.src = src;
-	node = new BFSVertex[xg.size()];
+	node = new BFSVertex[g.size()];
 	// Create array for storing vertex properties
-	for(XGraph.XVertex u: xg.xv) {
+	for(Graph.Vertex u: g.v) {
 	    node[u.getName()] = new BFSVertex(u);
 	}
 	// Set source to be at distance 0
@@ -41,7 +41,7 @@ public class BFS extends GraphAlgorithm<BFS.BFSVertex> {
     // reinitialize allows running BFS many times, with different sources
     void reinitialize(Graph.Vertex newSource) {
 	src = newSource;
-	for(XGraph.XVertex u: xg.xv) {
+	for(Graph.Vertex u: g.v) {
 	    BFSVertex bu = getVertex(u);
 	    bu.seen = false;
 	    bu.parent = null;

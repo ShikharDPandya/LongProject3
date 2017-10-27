@@ -60,10 +60,11 @@ public class StronglyConnectedComps
 //            d.DFS_Vertices.remove(findMinFinishTime(d));
 //        }
 
-        for (DFS.DFSVertex v1:d.DFS_Vertices)
+        /*for (DFS.DFSVertex v1:d.DFS_Vertices)
         {
             v1.seen=false;
-        }
+        }*/
+        d.resetSeen();
 
         for(Graph.Vertex v1:SortedByFinishedTime)
         {
@@ -102,16 +103,16 @@ public class StronglyConnectedComps
         Graph g = new Graph(5);
         System.out.println("Enter Graph:-");
         g = g.readDirectedGraph(in);
-        DMSTGraph dg= new DMSTGraph(g.n);
+        DMSTGraph dg= new DMSTGraph(g);
         //XGraph xg = new XGraph(g);
-        DFS D1 = new DFS(g,);
-        D1.findDFS(g.v[0],false);
-        numComps=findStronglyConnectedComponents(D1,numComps,);
+        //DFS D1 = new DFS(g,);
+        //D1.findDFS(g.v[0],false);
+        //numComps=findStronglyConnectedComponents(D1,numComps,);
         System.out.println("Number of Componenets:" + numComps);
         System.out.println("--------------DFS Path--------------");
-        for (DFS.DFSVertex v:D1.DFS_Vertices)
+        //for (DFS.DFSVertex v:D1.DFS_Vertices)
         {
-            System.out.println(v.originalVertex.name);
+           // System.out.println(v.originalVertex.name);
         }
     }
 

@@ -52,7 +52,7 @@ public class LP3
         DMSTGraph dg = new DMSTGraph(xg);
 
         ArrayList<DMSTGraph.DMSTVertex> list=new ArrayList<>();
-        create0Edges(startVertex.getName(),dg);
+        dg=create0Edges(startVertex.getName(),dg);
         dg.printEdges();
         list=find0Cycle(dg,list);
         System.out.println(list);
@@ -93,7 +93,7 @@ public class LP3
         int minWeight= Integer.MAX_VALUE;
         do {
             dg = create0Edges(start.getName(),dg);
-            numComps=StronglyConnectedComps.findStronglyConnectedComponents(dg,numComps);
+            numComps=StronglyConnectedComps.findStronglyConnectedComponents(dg,numComps,dg.iterator(),dg.returnEdgeIterators(),dg.returnReverseEdgeIterators());
             if(numComps == 1)
                 break;
             else
@@ -151,13 +151,14 @@ public class LP3
         return dg;
     }
 
-    static void findCycle(DFS<DMSTGraph.DMSTVertex> d, DFS.DFSVertex<DMSTGraph.DMSTVertex> v1)
+/*
+    static void findCycle(DFS d, DFS.DFSVertex v1)
     {
         d.timeCounter++;
         v1.seen=true;
         d.DFS_Vertices.add(v1);
         v1.startTime=d.timeCounter;
-        for (DFS.DFSVertex<DMSTGraph.DMSTVertex> V:d.node)
+        for (DFS.DFSVertex V:d.node)
         {
             if(V.seen)
                 continue;
@@ -179,32 +180,21 @@ public class LP3
             d.timeCounter++;
             v1.finishTime = d.timeCounter;
         }
-
     }
-
-
-    public static void initializeNodes(DFS<DMSTGraph.DMSTVertex> D,DMSTGraph g)
-    {
-        int counter=0;
-        for (DMSTGraph.DMSTVertex v:g.DMSTVertices)
-        {
-            D.node[v.getName()]=new DFS.DFSVertex<DMSTGraph.DMSTVertex>(v);
-            counter++;
-            if(counter == DMSTGraph.currentSizeOfGraph)
-                break;
-        }
-    }
+    */
 
 
     public static ArrayList<DMSTGraph.DMSTVertex> find0Cycle(DMSTGraph dg, ArrayList<DMSTGraph.DMSTVertex> list)
     {
-        DFS d = new DFS(dg);
-
-        findCycle(d,d.node[0]);
-        for (DFS.DFSVertex<DMSTGraph.DMSTVertex> v : d.Cycle_Vertices)
+        DFS d = new DFS(dg,dg.iterator(),dg.returnEdgeIterators(),dg.returnReverseEdgeIterators());
+        d.resetSeen(dg.iterator());
+        //d.findCycle(dg.DMSTVertices[0]);
+        d.findCycle(dg.iterator());
+        d.resetIterators(dg.iterator(),dg.returnEdgeIterators(),dg.returnReverseEdgeIterators());
+        /*for (DFS.DFSVertex v : d.Cycle_Vertices)
         {
             list.add(v.originalVertex);
-        }
+        }*/
         return list;
     }
 }
