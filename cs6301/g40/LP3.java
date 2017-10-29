@@ -13,25 +13,12 @@ import cs6301.g40.Graph.Vertex;
 import cs6301.g40.Graph.Edge;
 
 import static cs6301.g40.DMSTGraph.createDMSTComponent;
-//import cs6301.g40.Timer;
+import static cs6301.g40.DMSTGraph.currentSizeOfGraph;
 
 public class LP3
 {
     static int VERBOSE = 0;
 
-
-
-    /*
-    public LP3(Graph g)
-    {
-        super(g);
-        node = new DMSTVertex[g.size()];
-        for(Graph.Vertex u: g)
-        {
-            node[u.getName()] = new DMSTVertex(u);
-        }
-    }
-    */
     public static void main(String[] args) throws FileNotFoundException {
         Scanner in;
         if (args.length > 0) {
@@ -44,19 +31,12 @@ public class LP3
             VERBOSE = Integer.parseInt(args[1]);
         }
 
-	int start = in.nextInt();  // root node of the MST
-        Graph g = Graph.readDirectedGraph(in);
-	Vertex startVertex = g.getVertex(start);
-	List<Edge> dmst = new ArrayList<>();
-        XGraph xg = new XGraph(g);
-        DMSTGraph dg = new DMSTGraph(xg);
 
-        ArrayList<DMSTGraph.DMSTVertex> list=new ArrayList<>();
-        dg=create0Edges(startVertex.getName(),dg);
-        dg.printEdges();
-        list=find0Cycle(dg,list);
-        System.out.println(list);
-/*
+	    int start = in.nextInt();  // root node of the MST
+        Graph g = Graph.readDirectedGraph(in);
+	    Vertex startVertex = g.getVertex(start);
+	    List<Edge> dmst = new ArrayList<>();
+
         Timer timer = new Timer();
 	int wmst = directedMST(g, startVertex, dmst);
         timer.end();
@@ -71,7 +51,7 @@ public class LP3
 	    System.out.println("_________________________");
         }
         System.out.println(timer);
-        */
+
     }
 
     /** TO DO: List dmst is an empty list. When your algorithm finishes,
@@ -85,51 +65,82 @@ public class LP3
     public static int directedMST(Graph g, Vertex start, List<Edge> dmst)
     {
         int numComps=0;
-        ArrayList<DMSTGraph.DMSTVertex> verticesInCycle = new ArrayList<>();
         ArrayList<DMSTGraph.DMSTEdge> minEdgesToNewComp = new ArrayList<>();
         XGraph xg = new XGraph(g);
         DMSTGraph dg = new DMSTGraph(xg);
-        DMSTGraph.DMSTEdge min = dg.DMSTVertices[0].DMSTAdj.get(0);
-        int minWeight= Integer.MAX_VALUE;
         do {
             dg = create0Edges(start.getName(),dg);
-            numComps=StronglyConnectedComps.findStronglyConnectedComponents(dg,numComps,dg.iterator(),dg.returnEdgeIterators(),dg.returnReverseEdgeIterators());
+            DFS D1 = new DFS(dg,dg.iterator(),dg.returnEdgeIterators(),dg.returnReverseEdgeIterators());
+            D1.resetVertexIterator(dg.iterator());
+            if(D1.findDFS(dg.iterator(),false) == 1)
+                break;
+            StronglyConnectedComps scc= new StronglyConnectedComps(D1.DFS_Vertices,dg);
+            D1.resetProps();
+            numComps = 0;
+            D1.resetIterators(dg.iterator(),dg.returnEdgeIterators(),dg.returnReverseEdgeIterators());
+            numComps= scc.findStronglyConnectedComponents(D1,numComps);
             if(numComps == 1)
                 break;
             else
             {
-                verticesInCycle = find0Cycle(dg,verticesInCycle);
-                for (DMSTGraph.DMSTVertex v:dg.DMSTVertices)
+                DMSTGraph.sizeOfContGraphs.add(numComps);
+                //System.out.println("Sizes of graphs" + DMSTGraph.sizeOfContGraphs);
+                DMSTGraph.DMSTEdge[][] minEdgesComp = new DMSTGraph.DMSTEdge[numComps][numComps];
+                ArrayList<DMSTGraph.DMSTVertex> newComponentVertices = new ArrayList<>();
+                for (int i = 0; i < scc.comps.size(); i++)
                 {
-                    if(!verticesInCycle.contains(v))
+                    for (DFS.DFSVertex v:scc.comps.get(i))
                     {
-                        for (DMSTGraph.DMSTEdge e : v.DMSTAdj)
+                        for (DMSTGraph.DMSTEdge e:dg.DMSTVertices[v.name].DMSTAdj)
                         {
-                            if(verticesInCycle.contains(e.otherEnd(v)) && e.augmentedWeight < minWeight )
+                            int oppVertexcompNumber = D1.node[e.otherEnd(dg.DMSTVertices[v.name]).getName()-D1.numDisabledVertices].componentNumber;
+                            if(scc.comps.get(i).contains(D1.node[e.otherEnd(dg.DMSTVertices[v.name]).getName()-D1.numDisabledVertices]))
+                                continue;
+                            else
                             {
-                                min = e;
+                                if(minEdgesComp[i][oppVertexcompNumber]!=null && minEdgesComp[i][oppVertexcompNumber].augmentedWeight!=0)
+                                {
+                                    if(minEdgesComp[i][oppVertexcompNumber].augmentedWeight > e.augmentedWeight)
+                                    {
+                                        minEdgesComp[i][oppVertexcompNumber] = e;
+                                        if(e.augmentedWeight == 0)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                }
+                                else if(minEdgesComp[i][oppVertexcompNumber] == null)
+                                {
+                                    minEdgesComp[i][oppVertexcompNumber]=e;
+                                }
                             }
                         }
-                        ListIterator<DMSTGraph.DMSTEdge> it = v.revDMSTAdj.listIterator();
-                        while(it.hasNext() && !verticesInCycle.contains(it.next().otherEnd(v)))
-                            ;
-
                     }
-                    else
+                    ArrayList<DMSTGraph.DMSTVertex> dmstComps=new ArrayList<>();
+                    for (DFS.DFSVertex v: scc.comps.get(i))
                     {
-                        for (DMSTGraph.DMSTEdge e:v.DMSTAdj)
-                        {
-                            if( !verticesInCycle.contains(e.otherEnd(v))&&e.augmentedWeight == 0)
-                                min=e;
-                        }
+                        dmstComps.add(dg.DMSTVertices[v.name]);
                     }
-                    minEdgesToNewComp.add(min);
-                    minWeight=Integer.MAX_VALUE;
+                    newComponentVertices.add(createDMSTComponent(dmstComps,currentSizeOfGraph+i));
                 }
-                DMSTGraph.DMSTVertex newComp = createDMSTComponent(verticesInCycle);
-                dg.addDMSTVertex(newComp,minEdgesToNewComp);
+
+                for (int i = 0; i < numComps; i++)
+                {
+                    for(int j = 0 ; j < numComps; j++)
+                    {
+                        if(i==j)
+                            continue;
+                        if(minEdgesComp[i][j]!=null)
+                            minEdgesToNewComp.add(minEdgesComp[i][j]);
+                    }
+
+                    dg.addDMSTVertex(newComponentVertices.get(i),minEdgesToNewComp,newComponentVertices);
+                    minEdgesToNewComp.clear();
+                }
             }
         }while (numComps != 1);
+        //dg.printEdges();
+
         return 0;
     }
 
@@ -140,61 +151,17 @@ public class LP3
 
         for (int i = 0; i < DMSTGraph.currentSizeOfGraph; i++)
         {
-            if(i==startVertexIndex || dg.DMSTVertices[i].revDMSTAdj.isEmpty())
+            if(i==startVertexIndex || dg.DMSTVertices[i].revDMSTAdj.isEmpty()||dg.DMSTVertices[i].disabled)
                 continue;
             Iterator<DMSTGraph.DMSTEdge> it = dg.DMSTVertices[i].revDMSTAdj.iterator();
             while(it.hasNext())
             {
-                it.next().augmentedWeight-=dg.DMSTVertices[i].minEdge;
+                DMSTGraph.DMSTEdge e1 = it.next();
+                if(e1.augmentedWeight!=0)
+                    e1.augmentedWeight-=dg.DMSTVertices[i].minEdge;
             }
         }
         return dg;
     }
 
-/*
-    static void findCycle(DFS d, DFS.DFSVertex v1)
-    {
-        d.timeCounter++;
-        v1.seen=true;
-        d.DFS_Vertices.add(v1);
-        v1.startTime=d.timeCounter;
-        for (DFS.DFSVertex V:d.node)
-        {
-            if(V.seen)
-                continue;
-            for (DMSTGraph.DMSTEdge e : v1.originalVertex.DMSTAdj)
-            {
-                if (d.getVertex(e.otherEnd(d.xg.getVertex(v1.originalVertex.name + 1))).seen)
-                {
-                    break;
-                }
-                else if(e.augmentedWeight==0)
-                {
-                    v1.seen=true;
-                    d.Cycle_Vertices.add(v1);
-                    findCycle(d,d.getVertex(e.otherEnd(d.xg.getVertex(v1.originalVertex.name + 1))));
-                }
-                else
-                    v1.seen=true;
-            }
-            d.timeCounter++;
-            v1.finishTime = d.timeCounter;
-        }
-    }
-    */
-
-
-    public static ArrayList<DMSTGraph.DMSTVertex> find0Cycle(DMSTGraph dg, ArrayList<DMSTGraph.DMSTVertex> list)
-    {
-        DFS d = new DFS(dg,dg.iterator(),dg.returnEdgeIterators(),dg.returnReverseEdgeIterators());
-        d.resetSeen(dg.iterator());
-        //d.findCycle(dg.DMSTVertices[0]);
-        d.findCycle(dg.iterator());
-        d.resetIterators(dg.iterator(),dg.returnEdgeIterators(),dg.returnReverseEdgeIterators());
-        /*for (DFS.DFSVertex v : d.Cycle_Vertices)
-        {
-            list.add(v.originalVertex);
-        }*/
-        return list;
-    }
 }

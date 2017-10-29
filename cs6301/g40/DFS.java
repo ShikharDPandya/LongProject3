@@ -10,32 +10,31 @@ public class DFS extends GraphAlgorithm<DFS.DFSVertex>
     ArrayList<DFSVertex> DFS_Vertices;
     ArrayList<DFSVertex> Cycle_Vertices;
     int timeCounter;
-    public DFS(Graph g, Iterator vertexIterator, ArrayList<Iterator<Graph.Edge>> edgeIterators,ArrayList<Iterator<Graph.Edge>> revEdgeIterators)
+    int numDisabledVertices;
+    public DFS(Graph g, Iterator<Graph.Vertex> vertexIterator, ArrayList<Iterator<Graph.Edge>> edgeIterators,ArrayList<Iterator<Graph.Edge>> revEdgeIterators)
     {
         super(g);
         vertexInGraph=vertexIterator;
         int counter = 0;
         DFS_Vertices = new ArrayList<>();
         Cycle_Vertices=new ArrayList<>();
-        //SortedByFinishedTime = new LinkedList<>();
-        node = new DFSVertex[g.n];
+        node = new DFSVertex[edgeIterators.size()]; // initialised to the number of active components
         timeCounter=0;
-
+        numDisabledVertices = DMSTGraph.currentSizeOfGraph-edgeIterators.size();
         initializeNodes(vertexIterator,edgeIterators,revEdgeIterators);
-
     }
 
     void initializeNodes(Iterator<Graph.Vertex> Vit,ArrayList<Iterator<Graph.Edge>> edgeIterators,ArrayList<Iterator<Graph.Edge>> revEdgeIterators)
     {
-        Iterator<Graph.Vertex> copyIterator = Vit;
         Graph.Vertex v;
-        while (copyIterator.hasNext())
+        int counter = 0;
+        while (Vit.hasNext())
         {
-            v = copyIterator.next();
+            v = Vit.next();
             Graph.Edge e;
-            Iterator<Graph.Edge> Eit = edgeIterators.get(v.getName());
-            Iterator<Graph.Edge> revEit = revEdgeIterators.get(v.getName());
-            node[v.getName()] = new DFSVertex(v.getName(),Eit,revEit);
+            Iterator<Graph.Edge> Eit = edgeIterators.get(counter);
+            Iterator<Graph.Edge> revEit = revEdgeIterators.get(counter);
+            node[counter++] = new DFSVertex(v.getName(),Eit,revEit);
         }
     }
 
@@ -58,7 +57,6 @@ public class DFS extends GraphAlgorithm<DFS.DFSVertex>
 
         public DFSVertex(int n,Iterator adj,Iterator revAdj)
         {
-            //this.originalVertex=v;
             name=n;
             edgeInAdj = adj;
             edgeInRevAdj = revAdj;
@@ -68,174 +66,172 @@ public class DFS extends GraphAlgorithm<DFS.DFSVertex>
             componentNumber=0;
         }
 
+
         public void setIterators(Iterator<Graph.Edge> edgeIterator,Iterator<Graph.Edge> revEdgeIterator)
         {
             edgeInAdj = edgeIterator;
             edgeInRevAdj = revEdgeIterator;
         }
     }
+
+
     public void resetIterators(Iterator<Graph.Vertex> Vit,ArrayList<Iterator<Graph.Edge>> edgeIterators,ArrayList<Iterator<Graph.Edge>> reverseEdgeIterators)
     {
         vertexInGraph = Vit;
-        for(int i = 0; i < DMSTGraph.currentSizeOfGraph;i++)
+        for(int i = 0; i < edgeIterators.size();i++)
         {
-            node[i].setIterators(edgeIterators.get(i),reverseEdgeIterators.get(i));
+            //if(node[i]!=null)
+                node[i].setIterators(edgeIterators.get(i),reverseEdgeIterators.get(i));
         }
     }
-    void resetSeen(Iterator<Graph.Vertex> Vit)
+
+    public void resetVertexIterator(Iterator<Graph.Vertex> Vit)
     {
-        //Iterator<Graph.Vertex> savePrev= vertexInGraph;
-        Graph.Vertex vCurr;
-        while(Vit.hasNext())
-        {
-            vCurr = Vit.next();
-            node[vCurr.getName()].seen=false;
-        }
-        //vertexInGraph = savePrev;
+        vertexInGraph = Vit;
     }
+
 
     void resetSeen()
     {
-        //Iterator<Graph.Vertex> savePrev= vertexInGraph;
-        Graph.Vertex vCurr;
-        while(vertexInGraph.hasNext())
+
+        for(int i = 0; i < node.length; i++)
         {
-            vCurr = vertexInGraph.next();
-            node[vCurr.getName()].seen=false;
+            node[i].seen=false;
         }
-        //vertexInGraph = savePrev;
+    }
+
+    public void resetProps()
+    {
+        this.timeCounter=0;
+        this.DFS_Vertices.clear();
+
+        for(int i = 0; i < node.length; i++)
+        {
+            node[i].seen=false;
+            node[i].startTime=0;
+            node[i].finishTime = 0;
+            node[i].componentNumber=0;
+        }
     }
 
     public void findCycle(Iterator<Graph.Vertex> Vit)
     {
         Graph.Vertex vCurr;
-        //Iterator<Graph.Vertex> savePrev = vertexInGraph;
         while(Vit.hasNext())
         {
+            boolean foundCycle=false;
             vCurr = Vit.next();
 
-            if (!node[vCurr.getName()].seen)
+            if (!node[vCurr.getName()-numDisabledVertices].seen)
             {
-                if(findCycle(vCurr))
+                foundCycle=findCycle(vCurr);
+                if(foundCycle)
                     break;
             }
-            resetSeen(vertexInGraph);
+            resetSeen();
+            if(!foundCycle)
+                Cycle_Vertices.clear();
         }
-        //vertexInGraph = savePrev;
     }
 
     public boolean findCycle(Graph.Vertex v1)
     {
         Graph.Edge eCurr;
-        //Iterator<Graph.Edge> savePrevEdgeIterator = this.node[v1.getName()].edgeInAdj;
-        while (this.node[v1.getName()].edgeInAdj.hasNext())
+        DFSVertex df1 = this.node[v1.getName()-numDisabledVertices];
+        df1.seen=true;
+        while (df1.edgeInAdj.hasNext())
         {
-            eCurr = this.node[v1.getName()].edgeInAdj.next();
-            if(!this.getVertex(eCurr.otherEnd(v1)).seen)
+            eCurr = df1.edgeInAdj.next();
+            if(!this.node[(eCurr.otherEnd(v1)).getName()-numDisabledVertices].seen)
             {
-                Cycle_Vertices.add(this.node[v1.getName()]);
-                findCycle(eCurr.otherEnd(v1));
+                Cycle_Vertices.add(df1);
+                if(findCycle(eCurr.otherEnd(v1)))
+                    return true;
                 //this.node[v1.getName()].edgeInAdj = savePrevEdgeIterator;
             }
             else
+            {
+                Cycle_Vertices.add(df1);
+                Cycle_Vertices.add(this.node[(eCurr.otherEnd(v1)).getName()-numDisabledVertices]);
                 return true;
+            }
+
+            Cycle_Vertices.remove(Cycle_Vertices.size()-1);
         }
         return false;
     }
 
-    public void findDFS(Iterator<Graph.Vertex> Vit,boolean ifFlipped)
+    public int findDFS(Iterator<Graph.Vertex> Vit,boolean ifFlipped)
     {
         Graph.Vertex vCurr;
+        int i = 0;
         while(Vit.hasNext())
         {
             vCurr = Vit.next();
 
-            if (!node[vCurr.getName()].seen)
+            if (!node[vCurr.getName()-numDisabledVertices].seen)
             {
                 findDFS(vCurr,ifFlipped);
+                i++;
             }
         }
+        return i;
+    }
+
+
+    public ArrayList<DFS.DFSVertex> DFSOnRevGraph( Graph.Vertex v1,ArrayList<DFS.DFSVertex> comp, int compNum)
+    {
+        DFSVertex df1 = this.node[v1.getName()-numDisabledVertices];
+        df1.componentNumber=compNum;
+        df1.seen=true;
+        Graph.Edge eCurr;
+        comp.add(df1);
+        while (df1.edgeInRevAdj.hasNext())
+        {
+            eCurr = df1.edgeInRevAdj.next();
+            if(!this.node[(eCurr.otherEnd(v1)).getName()-numDisabledVertices].seen)
+            {
+                comp=DFSOnRevGraph(eCurr.otherEnd(v1),comp,compNum);
+            }
+        }
+        return comp;
     }
 
     public void findDFS( Graph.Vertex v1,boolean ifFlippedGraph)
     {
+        DFSVertex df1 = this.node[v1.getName()-numDisabledVertices];
         this.timeCounter++;
-        this.node[v1.getName()].seen=true;
-        this.DFS_Vertices.add(this.node[v1.getName()]);
-        this.node[v1.getName()].startTime=timeCounter;
+        df1.seen=true;
+        this.DFS_Vertices.add(df1);
+        df1.startTime=timeCounter;
         if(!ifFlippedGraph)
         {
             Graph.Edge eCurr;
-            Iterator<Graph.Edge> savePrevEdgeIterator =this.node[v1.getName()].edgeInAdj;
-            while (this.node[v1.getName()].edgeInAdj.hasNext())
+            while (df1.edgeInAdj.hasNext())
             {
-                eCurr = this.node[v1.getName()].edgeInAdj.next();
-                if(!this.getVertex(eCurr.otherEnd(v1)).seen)
+                eCurr = df1.edgeInAdj.next();
+                if(!this.node[(eCurr.otherEnd(v1)).getName()-numDisabledVertices].seen)
                 {
                     findDFS(eCurr.otherEnd(v1),false);
                 }
             }
             this.timeCounter++;
-            this.node[v1.getName()].finishTime = this.timeCounter;
-            this.node[v1.getName()].edgeInAdj = savePrevEdgeIterator;
+            df1.finishTime = this.timeCounter;
         }
         else
         {
             Graph.Edge eCurr;
-            Iterator<Graph.Edge> savePrevRevEdgeIterator = this.node[v1.getName()].edgeInRevAdj;
-            while (this.node[v1.getName()].edgeInRevAdj.hasNext())
+            while (df1.edgeInRevAdj.hasNext())
             {
-                eCurr = this.node[v1.getName()].edgeInRevAdj.next();
-                if(!this.getVertex(eCurr.otherEnd(v1)).seen)
+                eCurr = df1.edgeInRevAdj.next();
+                if(!this.node[(eCurr.otherEnd(v1)).getName()-numDisabledVertices].seen)
                 {
                     findDFS(eCurr.otherEnd(v1),true);
                 }
             }
             this.timeCounter++;
-            this.node[v1.getName()].finishTime = this.timeCounter;
-            this.node[v1.getName()].edgeInRevAdj = savePrevRevEdgeIterator;
+            df1.finishTime = this.timeCounter;
+            //this.node[v1.getName()].edgeInRevAdj = savePrevRevEdgeIterator;
         }
     }
-
-
-    /*
-    public void findDFS( DFSVertex v1,boolean ifFlippedGraph)
-    {
-        this.timeCounter++;
-        v1.seen=true;
-        this.DFS_Vertices.add(v1);
-        v1.startTime=timeCounter;
-        if(!ifFlippedGraph)
-        {
-            for (Graph.Edge e : v1.originalVertex.adj)
-            {
-                if (this.getVertex(e.otherEnd(this.xg.getVertex(v1.originalVertex.name + 1))).seen)
-                {
-                    continue;
-                }
-                else
-                {
-                    findDFS(this.getVertex(e.otherEnd(this.xg.getVertex(v1.originalVertex.name + 1))),false);
-                }
-            }
-            this.timeCounter++;
-            v1.finishTime = this.timeCounter;
-        }
-        else
-        {
-            for (Graph.Edge e : v1.originalVertex.revAdj)
-            {
-                if (this.getVertex(e.otherEnd(this.xg.getVertex(v1.originalVertex.name + 1))).seen)
-                {
-                    continue;
-                } else
-                {
-                    findDFS(this.getVertex(e.otherEnd(this.xg.getVertex(v1.originalVertex.name + 1))),true);
-                }
-            }
-            this.timeCounter++;
-            v1.finishTime = this.timeCounter;
-        }
-    }
-    */
 }

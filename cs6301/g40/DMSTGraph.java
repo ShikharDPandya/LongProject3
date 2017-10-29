@@ -2,26 +2,20 @@ package cs6301.g40;
 
 import java.util.*;
 
-//public class DMST extends GraphAlgorithm<DMST.DMSTVertex>
-
 public class DMSTGraph extends Graph
 {
     static int totalSizeOfGraph;
     static int currentSizeOfGraph;
+    static ArrayList<Integer> sizeOfContGraphs;
     DMSTVertex[] DMSTVertices;
-
-
-    //public DMSTVertex returnDMSTVertex(Graph.Vertex u)
-    //{
-      //  return this.DMSTVertices[u.getName()];
-    //}
 
     public ArrayList<Iterator<Edge>> returnEdgeIterators()
     {
         ArrayList<Iterator<Edge>> Iterators = new ArrayList<>();
         for (int i = 0; i < currentSizeOfGraph; i++)
         {
-            Iterators.add(this.DMSTVertices[i].iterator(true));
+            if(!this.DMSTVertices[i].disabled)
+                Iterators.add(this.DMSTVertices[i].iterator(true));
         }
         return Iterators;
     }
@@ -31,7 +25,8 @@ public class DMSTGraph extends Graph
         ArrayList<Iterator<Edge>> Iterators = new ArrayList<>();
         for (int i = 0; i < currentSizeOfGraph; i++)
         {
-            Iterators.add(this.DMSTVertices[i].iterator(false));
+            if(!this.DMSTVertices[i].disabled)
+                Iterators.add(this.DMSTVertices[i].iterator(false));
         }
         return Iterators;
     }
@@ -72,11 +67,11 @@ public class DMSTGraph extends Graph
             minEdge=0;
         }
 
+
         boolean isDisabled() { return disabled; }
 
         void disable() { disabled = true; }
 
-        //@Override
         public Iterator<Edge> iterator(boolean flippedGraph)
         {
             if(flippedGraph)
@@ -84,6 +79,7 @@ public class DMSTGraph extends Graph
             else
                 return new ReverseDMSTVertexIterator(this);
         }
+
 
         class DMSTVertexIterator implements Iterator<Edge>
         {
@@ -96,6 +92,8 @@ public class DMSTGraph extends Graph
                 this.it = u.DMSTAdj.iterator();
                 ready = false;
             }
+
+
 
             public boolean hasNext()
             {
@@ -115,7 +113,7 @@ public class DMSTGraph extends Graph
                     cur = it.next();
                 }
                 ready = true;
-                return !cur.isDisabled();
+                return !(cur.isDisabled()||cur.augmentedWeight!=0);
             }
 
             public DMSTEdge next()
@@ -163,7 +161,7 @@ public class DMSTGraph extends Graph
                     cur = it.next();
                 }
                 ready = true;
-                return !cur.isDisabled();
+                return !(cur.isDisabled()||cur.augmentedWeight!=0);
             }
 
             public DMSTEdge next()
@@ -186,9 +184,13 @@ public class DMSTGraph extends Graph
     {
         int augmentedWeight;
         boolean disabled;
+        DMSTVertex dFrom;
+        DMSTVertex dTo;
         public DMSTEdge(DMSTVertex from, DMSTVertex to, int weight)
         {
             super(from,to,weight);
+            dFrom = from;
+            dTo = to;
             augmentedWeight=weight;
             disabled=false;
         }
@@ -205,13 +207,6 @@ public class DMSTGraph extends Graph
         }
     }
 
-
-    /*
-    DMSTVertex getVertex(XGraph.XVertex u)
-    {
-        return node[u.getName()];
-    }
-    */
     @Override
     public DMSTVertex getVertex(int n)
     {
@@ -220,9 +215,12 @@ public class DMSTGraph extends Graph
     public DMSTGraph(Graph xg)
     {
         super(xg);
-        int counter = 0, min = 0;
+        int counter = 0;
+        //int min=0;
         totalSizeOfGraph =  2*xg.n;
         currentSizeOfGraph = xg.n;
+        sizeOfContGraphs = new ArrayList<>();
+        sizeOfContGraphs.add(xg.n);
         DMSTVertices = new DMSTVertex[totalSizeOfGraph];
         for(Graph.Vertex u: xg.v)
         {
@@ -235,20 +233,17 @@ public class DMSTGraph extends Graph
         for (Graph.Vertex v:xg.v)
         {
             counter++;
-            if(!v.adj.isEmpty())
-                min=v.adj.get(0).weight;
+            //if(!v.adj.isEmpty())
+              //  min=v.adj.get(0).weight;
             for (Graph.Edge e:v.adj)
             {
                 Graph.Vertex u = e.otherEnd(xg.getVertex(v.getName()+1));
-                //XGraph.XVertex u = xg.getVertex(u1);
                 DMSTVertex vDMST = DMSTVertices[v.getName()];
                 DMSTVertex uDMST = DMSTVertices[u.getName()];
                 DMSTEdge edge = new DMSTEdge(vDMST,uDMST,e.weight);
-                //DMSTEdge revEdge = new DMSTEdge(vDMST,uDMST,e.weight);
                 vDMST.DMSTAdj.add(edge);
                 if(!uDMST.revDMSTAdj.isEmpty())
                 {
-                    //if( uDMST.revDMSTAdj.get(uDMST.revDMSTAdj.size()-1).weight < e.weight)
                     if( uDMST.revDMSTAdj.get(0).weight < e.weight)
                         uDMST.revDMSTAdj.add(edge);
                     else
@@ -262,14 +257,6 @@ public class DMSTGraph extends Graph
                     uDMST.minEdge = edge.augmentedWeight;
                     uDMST.revDMSTAdj.push(edge);
                 }
-
-                /*
-                if(min >= e.weight)
-                {
-                    vDMST.minEdge = edge;
-                    min = e.weight;
-                }
-                */
             }
             if(counter == currentSizeOfGraph)
                 break;
@@ -288,7 +275,8 @@ public class DMSTGraph extends Graph
         DMSTVertex xcur;
 
         DMSTGraphIterator(DMSTGraph dg) {
-            this.it = new ArrayIterator<DMSTVertex>(dg.DMSTVertices, 0, dg.size() - 1);  // Iterate over existing elements only
+            //Todo Check this size of graph is changed to current size of graph
+            this.it = new ArrayIterator<DMSTVertex>(dg.DMSTVertices, 0, currentSizeOfGraph - 1);  // Iterate over existing elements only
         }
 
 
@@ -311,42 +299,58 @@ public class DMSTGraph extends Graph
         }
     }
 
-        public static DMSTVertex createDMSTComponent(ArrayList<DMSTVertex> VerticesInCycle)
+    public static DMSTVertex createDMSTComponent(ArrayList<DMSTVertex> VerticesInCycle,int name)
     {
-        Graph.Vertex v = new Graph.Vertex(currentSizeOfGraph);
-        //XGraph.XVertex u = new XGraph.XVertex(v);
+        Graph.Vertex v = new Graph.Vertex(name);
         DMSTVertex c = new DMSTVertex(VerticesInCycle,v);
         for (DMSTVertex v1:VerticesInCycle)
         {
             v1.disable();
         }
-        c.memberVerticesOfComponent.addAll(VerticesInCycle);
         return c;
     }
 
-     boolean addDMSTVertex(DMSTVertex v,ArrayList<DMSTEdge> edges)
+     boolean addDMSTVertex(DMSTVertex v,ArrayList<DMSTEdge> edges,ArrayList<DMSTVertex> newComps)
      {
          if(currentSizeOfGraph == totalSizeOfGraph)
             return false;
          DMSTVertices[currentSizeOfGraph] = v;
-         DMSTVertex otherVertex = new DMSTVertex(v);
+         DMSTVertex otherVertex=null;
          for (DMSTEdge e:edges)
          {
-             if(!(v.memberVerticesOfComponent.contains(this.DMSTVertices[e.from.getName()+1])))
+             if(!(v.memberVerticesOfComponent.contains(this.DMSTVertices[e.to.getName()])))
              {
-                 otherVertex = (DMSTVertex) e.from;
-                 DMSTEdge e1 = new DMSTEdge(otherVertex,v,e.weight);
-                 e1.setAugmentedWeight(e.augmentedWeight);
-                 otherVertex.DMSTAdj.add(e1);
-                 v.revDMSTAdj.add(e);
-             }
-             else if(!(v.memberVerticesOfComponent.contains(this.DMSTVertices[e.to.getName()+1])))
-             {
-                 otherVertex = (DMSTVertex) e.to;
+                 otherVertex = null;
+                 int i = 0;
+                 while(i<newComps.size())
+                 {
+                     otherVertex = newComps.get(i);
+                     if(otherVertex.memberVerticesOfComponent.contains((DMSTVertex)e.to))
+                         break;
+                     i++;
+                 }
+                 if(otherVertex==null)
+                     return false;
                  DMSTEdge e1 = new DMSTEdge(v,otherVertex,e.weight);
                  e1.setAugmentedWeight(e.augmentedWeight);
                  v.DMSTAdj.add(e1);
-                 otherVertex.revDMSTAdj.add(e);
+                 if(otherVertex.revDMSTAdj.isEmpty())
+                 {
+                     otherVertex.minEdge = e1.augmentedWeight;
+                     otherVertex.revDMSTAdj.add(e1);
+                 }
+                 else
+                 {
+                     if(otherVertex.minEdge > e1.augmentedWeight)
+                     {
+                         otherVertex.revDMSTAdj.push(e1);
+                         otherVertex.minEdge=e1.augmentedWeight;
+                     }
+                     else
+                     {
+                         otherVertex.revDMSTAdj.add(e1);
+                     }
+                 }
              }
          }
          currentSizeOfGraph++;
@@ -369,6 +373,27 @@ public class DMSTGraph extends Graph
          }
      }
 
+     /*
+     public ArrayList<DMSTEdge> unRollGraph(ArrayList<DMSTEdge> givenSelectedEdges,ArrayList<DMSTEdge> returnSelectedEdges)
+     {
+         for (int i = 0; i < currentSizeOfGraph; i++)
+         {
+             if(!this.DMSTVertices[i].disabled && this.DMSTVertices[i].isComponent)
+             {
+                 for (DMSTVertex v:this.DMSTVertices[i].memberVerticesOfComponent)
+                 {
+                    v.disabled=false;
+                 }
+
+                 this.DMSTVertices[i].disabled=true;
+             }
+         }
+         for(DMSTEdge e:givenSelectedEdges)
+         {
+             e.from.
+         }
+     }
+    */
     public static void main(String[] args)
     {
         int numComps=0;
@@ -391,7 +416,7 @@ public class DMSTGraph extends Graph
         //dummyEdges.add(dg.DMSTVertices[1].DMSTAdj.get(0));
         //dummyEdges.add(dg.DMSTVertices[2].DMSTAdj.get(0));
 
-        if(dg.addDMSTVertex(createDMSTComponent(dummyCycle),dummyEdges))
+        //if(dg.addDMSTVertex(createDMSTComponent(dummyCycle),dummyEdges))
         {
             /*
             dg.DMSTVertices[0].disable();
